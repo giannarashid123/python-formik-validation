@@ -19,12 +19,27 @@ def customers():
 
     if request.method == 'POST':
         data = request.get_json()
-        customer = Customer(name=data.get('name'), email=data.get('email'), age=data.get('age'))
-        db.session.add(customer)
-        db.session.commit()
-        return make_response(
-            jsonify(
-                {'id': customer.id, 'name': customer.name, 'email': customer.email, 'age': customer.age }))
+        
+        # Server-side validation
+        if not data.get('name') or not data.get('name').strip():
+            return make_response(jsonify({'error': 'Name is required'}), 400)
+        if not data.get('email') or not data.get('email').strip():
+            return make_response(jsonify({'error': 'Email is required'}), 400)
+        if not data.get('age') and data.get('age') != 0:
+            return make_response(jsonify({'error': 'Age is required'}), 400)
+        
+        try:
+            customer = Customer(name=data.get('name'), email=data.get('email'), age=data.get('age'))
+            db.session.add(customer)
+            db.session.commit()
+            return make_response(
+                jsonify(
+                    {'id': customer.id, 'name': customer.name, 'email': customer.email, 'age': customer.age }))
+        except Exception as e:
+            db.session.rollback()
+            if 'UNIQUE constraint failed' in str(e):
+                return make_response(jsonify({'error': 'Email already exists'}), 400)
+            return make_response(jsonify({'error': str(e)}), 400)
 
 if __name__ == "__main__":
     app.run(port="5555", debug=True)
